@@ -1,0 +1,59 @@
+name: Update Awards CSV
+
+on:
+  pull_request:
+    types: [ready_for_review, converted_to_draft, closed]
+
+jobs:
+  update-awards:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Get PR labels
+        id: get_labels
+        run: echo "PR_LABELS=$(jq -r '.pull_request.labels | map(.name) | join(",")' $GITHUB_EVENT_PATH)" >> $GITHUB_ENV
+
+      - name: Get PR comments count
+        id: get_comments
+        run: |
+          PR_COMMENTS=$(jq '.pull_request.comments' $GITHUB_EVENT_PATH)
+          echo "PR_COMMENTS=$PR_COMMENTS" >> $GITHUB_ENV
+
+      - name: Calculate awards
+        id: calculate_awards
+        run: |
+          node calculateAwards.js > awards_output.txt
+          AWARDS=$(cat awards_output.txt)
+          echo "AWARDS=$AWARDS" >> $GITHUB_ENV
+          
+      - name: Update awards.csv
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          ISSUE_ID=${{ github.event.pull_request.id }}
+          PR_AUTHOR=${{ github.event.pull_request.user.login }}
+          PRIORITY=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[] | select(.name=="priority") | .name' || echo " ") echo "PRIORITY=$PRIORITY" >> $GITHUB_ENV
+          CHANGES_REQUESTED=${{ github.event.pull_request.changes_requested }}
+          NOTES=${{ github.event.pull_request.notes }}
+          LNADDR="???"
+          IFS=',' read -r DIFFICULTY FINAL_AWARD_AMOUNT <<< "${{ env.AWARDS }}"
+          NEW_ENTRY="$PR_AUTHOR,$GITHUB_EVENT_NAME,#$PR_NUMBER,#$ISSUE_ID,$DIFFICULTY,$PRIORITY,$CHANGES_REQUESTED,$NOTES,$FINAL_AWARD_AMOUNT,$PR_AUTHOR@blink.sv,$LNADDR"
+          echo "$NEW_ENTRY" >> awards.csv
+
+      - name: Commit changes
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_AUTHOR=${{ github.event.pull_request.user.login }}
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add awards.csv
+          git commit -m "$PR_AUTHOR Updated awards.csv for PR #$PR_NUMBER"
+          git push origin HEAD:test # Change 'test' to your default branch if different
