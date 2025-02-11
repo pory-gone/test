@@ -40,9 +40,9 @@ jobs:
           PR_NUMBER=${{ github.event.pull_request.number }}
           ISSUE_ID=${{ github.event.pull_request.id }}
           PR_AUTHOR=${{ github.event.pull_request.user.login }}
-          PRIORITY=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[] | select(.name=="priority") | .name' || echo " ") echo "PRIORITY=$PRIORITY" >> $GITHUB_ENV
-          DIFFICULTY=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[] | select(.name=="difficulty") | .name' || echo " ") echo "DIFFICULTY=$DIFFICULTY" >> $GITHUB_EN
-          CHANGES_REQUESTED=$(echo '${{ steps.get_reviews.outputs.data }}' | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          PRIORITY=${{ toJson(github.event.pull_request.labels) }} | jq -r '.[] | select(.name=="priority") | .name' || echo " ")
+          DIFFICULTY=${{ toJson(github.event.pull_request.labels) }} | jq -r '.[] | select(.name=="difficulty") | .name' || echo " ")
+          CHANGES_REQUESTED=${{ steps.get_reviews.outputs.data }} | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
           NOTES: ${{ github.event.pull_request.body }}
           if [ -z "${{ env.AUTHOR_LOGIN }}" ]; then
             LNADDR="???"
