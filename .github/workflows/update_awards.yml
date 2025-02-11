@@ -42,9 +42,14 @@ jobs:
           PR_AUTHOR=${{ github.event.pull_request.user.login }}
           PRIORITY=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[] | select(.name=="priority") | .name' || echo " ") echo "PRIORITY=$PRIORITY" >> $GITHUB_ENV
           DIFFICULTY=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[] | select(.name=="difficulty") | .name' || echo " ") echo "DIFFICULTY=$DIFFICULTY" >> $GITHUB_EN
-          CHANGES_REQUESTED=${{ github.event.pull_request.changes_requested }}
-          NOTES=${{ github.event.pull_request.notes }}
-          LNADDR="???"
+          CHANGES_REQUESTED=$(echo '${{ steps.get_reviews.outputs.data }}' | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+          NOTES: ${{ github.event.pull_request.body }}
+          if [ -z "${{ env.AUTHOR_LOGIN }}" ]; then
+            LNADDR="???"
+          else
+            LNADDR="${{ env.AUTHOR_LOGIN }}"
+          fi
+          echo "LNADDR=$LNADDR" >> $GITHUB_ENV
           IFS=',' read -r DIFFICULTY FINAL_AWARD_AMOUNT <<< "${{ env.AWARDS }}"
           NEW_ENTRY="$PR_AUTHOR,$GITHUB_EVENT_NAME,#$PR_NUMBER,#$ISSUE_ID,$DIFFICULTY,$PRIORITY,$CHANGES_REQUESTED,$NOTES,$FINAL_AWARD_AMOUNT,$PR_AUTHOR@blink.sv,$LNADDR"
           echo "$NEW_ENTRY" >> awards.csv
